@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>广西自动化学会会员管理系统 - 登录</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 id="form-title">会员登录</h1>
+        <p>广西自动化学会会员管理系统</p>
+        
+        <input type="email" id="email" placeholder="邮箱地址" required>
+        <input type="password" id="password" placeholder="密码" required>
+        
+        <!-- Login Mode Buttons -->
+        <div id="login-buttons">
+            <button onclick="handleLogin()">登录</button>
+            <p style="margin-top: 15px; font-size: 14px;">
+                <a href="#" onclick="toggleMode('reset')">忘记密码？</a> | 
+                还没有账号？ <a href="#" onclick="toggleMode('register')">立即注册</a>
+            </p>
+        </div>
+
+        <!-- Register Mode Buttons (Hidden by default) -->
+        <div id="register-buttons" style="display: none;">
+            <button onclick="handleRegister()">注册新账号</button>
+            <p style="margin-top: 15px; font-size: 14px;">
+                已有账号？ <a href="#" onclick="toggleMode('login')">返回登录</a>
+            </p>
+        </div>
+
+        <!-- Reset Password Mode Buttons (Hidden by default) -->
+        <div id="reset-buttons" style="display: none;">
+            <button onclick="handleResetPassword()">发送重置邮件</button>
+            <p style="margin-top: 15px; font-size: 14px;">
+                <a href="#" onclick="toggleMode('login')">返回登录</a>
+            </p>
+        </div>
+        
+        <div id="message" class="message"></div>
+    </div>
+
+    <!-- Configuration and Auth Logic -->
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    
+    <script>
+        // Check if already logged in
+        async function checkLoginStatus() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    window.location.href = "dashboard.html";
+                }
+            } catch (e) {
+                showMessage("连接服务器失败，请检查网络或配置。错误：" + e.message, "error");
+            }
+        }
+        checkLoginStatus();
+
+        function toggleMode(mode) {
+            const title = document.getElementById('form-title');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const loginBtns = document.getElementById('login-buttons');
+            const regBtns = document.getElementById('register-buttons');
+            const resetBtns = document.getElementById('reset-buttons');
+            const msgDiv = document.getElementById('message');
+
+            // Clear messages
+            msgDiv.textContent = '';
+            msgDiv.className = 'message';
+
+            // Reset inputs visibility
+            emailInput.style.display = 'block';
+            passwordInput.style.display = 'block';
+
+            if (mode === 'register') {
+                title.textContent = '注册会员';
+                loginBtns.style.display = 'none';
+                regBtns.style.display = 'block';
+                resetBtns.style.display = 'none';
+            } else if (mode === 'reset') {
+                title.textContent = '重置密码';
+                passwordInput.style.display = 'none'; // Hide password for reset request
+                loginBtns.style.display = 'none';
+                regBtns.style.display = 'none';
+                resetBtns.style.display = 'block';
+            } else {
+                title.textContent = '会员登录';
+                loginBtns.style.display = 'block';
+                regBtns.style.display = 'none';
+                resetBtns.style.display = 'none';
+            }
+        }
+
+        function getCredentials() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            return { email, password };
+        }
+
+        function showMessage(text, type = 'info') {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = 'message ' + type;
+            // Auto clear after 5 seconds if success
+            if (type === 'success') {
+                setTimeout(() => {
+                    msgDiv.textContent = '';
+                    msgDiv.className = 'message';
+                }, 5000);
+            }
+        }
+
+        async function handleLogin() {
+            const { email, password } = getCredentials();
+            if (!email || !password) {
+                showMessage("请输入邮箱和密码", "error");
+                return;
+            }
+            showMessage("正在登录...", "info");
+            try {
+                await login(email, password);
+            } catch (e) {
+                showMessage(e.message, "error");
+            }
+        }
+
+        async function handleRegister() {
+            const { email, password } = getCredentials();
+            if (!email || !password) {
+                showMessage("请输入邮箱和密码", "error");
+                return;
+            }
+            if (password.length < 6) {
+                showMessage("密码长度至少为 6 位", "error");
+                return;
+            }
+            showMessage("正在注册...", "info");
+            try {
+                await register(email, password);
+                // Success message is handled inside register or we can show it here if register returns data
+            } catch (e) {
+                showMessage(e.message, "error");
+            }
+        }
+
+        async function handleResetPassword() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showMessage("请输入您的注册邮箱", "error");
+                return;
+            }
+            showMessage("正在发送重置邮件...", "info");
+            try {
+                await sendPasswordResetEmail(email);
+                showMessage("重置邮件已发送！请检查您的邮箱（包括垃圾邮件文件夹），点击链接设置新密码。", "success");
+            } catch (e) {
+                showMessage("发送失败: " + e.message, "error");
+            }
+        }
+    </script>
+</body>
+</html>

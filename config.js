@@ -1,0 +1,2 @@
+const SUPABASE_URL = 'https://ilkqlljezkejodsotsmp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlsa3FsbGplemtlam9kc290c21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4OTY0ODIsImV4cCI6MjA4MTQ3MjQ4Mn0.NE6D-tKpijxS3fczZl65QeTuCwPWB1Dxp0vvyyjXUvA';

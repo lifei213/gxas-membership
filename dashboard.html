@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会员中心 - 广西自动化学会</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <h1>欢迎回来</h1>
+        <div id="loading">加载用户信息中...</div>
+        
+        <div id="content" style="display: none;">
+            <p>您已成功登录系统。</p>
+            <div style="margin: 10px 0 16px 0;">
+                <button class="small" onclick="openModal('profile')">查看我的档案</button>
+            </div>
+            
+            <div id="profile-card" class="profile-info" style="display: none;">
+                <h3>我的档案</h3>
+                <p><strong>姓名:</strong> <span id="user-name">-</span></p>
+                <p><strong>邮箱:</strong> <span id="user-email">-</span></p>
+                <p><strong>角色:</strong> <span id="user-role">-</span></p>
+                <p><strong>会员等级:</strong> <span id="user-level">-</span></p>
+                <p><strong>职务:</strong> <span id="user-position">-</span></p>
+            </div>
+
+            <!-- Password Change Section -->
+            <div class="profile-info">
+                <h3>🔒 安全设置</h3>
+                <p>如需修改密码，请在下方输入新密码并保存。</p>
+                <div style="display: flex; gap: 10px; max-width: 400px;">
+                    <input type="password" id="new-password" placeholder="新密码 (至少6位)" style="flex: 1;">
+                    <button class="small" onclick="handleChangePassword()">修改密码</button>
+                </div>
+            </div>
+
+            <div id="notifications-section" class="profile-info">
+                <h3>🔔 通知提醒</h3>
+                <ul id="notifications-list" style="padding-left: 18px;"></ul>
+            </div>
+
+            <!-- Application Form Section (For Non-Admins) -->
+            <div id="application-section" class="profile-info" style="display: none;">
+                <h3>📝 申请正式会员</h3>
+                <p>请填写以下信息申请成为正式会员或学生会员。</p>
+                
+                <div id="application-form">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="app-name" placeholder="姓名" style="flex: 1;">
+                        <select id="app-gender" style="width: 100px;">
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="app-unit" placeholder="单位/学校" style="flex: 1;">
+                        <input type="text" id="app-phone" placeholder="手机号码" style="flex: 1;">
+                    </div>
+                    <textarea id="app-reason" placeholder="申请理由 / 个人简介" style="width: 100%; height: 80px; margin-bottom: 10px;"></textarea>
+                    
+                    <button onclick="submitApplication()">提交申请</button>
+                </div>
+                
+                <div id="application-status" style="display: none; margin-top: 15px; padding: 10px; background-color: #e8f0fe; border-radius: 4px;">
+                    <h4>✅ 申请已提交</h4>
+                    <p>您的申请状态：<strong id="app-status-text">审核中</strong></p>
+                    <p style="font-size: 14px; color: #666;">如需加急，请点击下方按钮发送邮件通知管理员。</p>
+                    <button class="secondary small" onclick="sendEmailToAdmin()">📧 邮件通知管理员</button>
+                </div>
+            </div>
+
+            <!-- Admin Statistics Section -->
+            <div id="admin-section" style="display: none;">
+                <h3>📊 会员统计 (管理员可见)</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">总会员数</div>
+                        <div class="stat-number" id="stat-total">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">已缴费</div>
+                        <div class="stat-number" id="stat-paid">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">学生会员</div>
+                        <div class="stat-number" id="stat-student">-</div>
+                    </div>
+                </div>
+
+                <!-- Admin Action Buttons -->
+                <div class="admin-actions" style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <button class="admin-action-btn" onclick="openModal('members')">
+                        <span style="margin-right: 8px;">👥</span> 会员管理 & 缴费
+                    </button>
+                    <button class="admin-action-btn" onclick="openModal('applications')">
+                        <span style="margin-right: 8px;">📨</span> 入会申请审核
+                    </button>
+                </div>
+            </div>
+
+            <button class="secondary" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;" onclick="closeModal(event)">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modal-body">
+                <!-- Content injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Templates for Modal Content -->
+    <div id="template-profile" style="display: none;">
+        <div class="profile-info">
+            <h3>我的档案</h3>
+            <p><strong>姓名:</strong> <span id="modal-user-name">-</span></p>
+            <p><strong>邮箱:</strong> <span id="modal-user-email">-</span></p>
+            <p><strong>角色:</strong> <span id="modal-user-role">-</span></p>
+            <p><strong>会员等级:</strong> <span id="modal-user-level">-</span></p>
+            <p><strong>职务:</strong> <span id="modal-user-position">-</span></p>
+        </div>
+    </div>
+    <div id="template-members" style="display: none;">
+        <div class="member-list">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>💰 缴费管理 & 会员列表</h3>
+                <div style="display:flex; gap:8px;">
+                    <button class="small" onclick="exportMembersToExcel()">📤 导出 Excel</button>
+                    <button class="small" onclick="sendBroadcastReminder()">📣 群发站内提醒</button>
+                </div>
+            </div>
+            <table id="members-table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>邮箱</th>
+                        <th>身份</th>
+                        <th>职务</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="template-applications" style="display: none;">
+        <div class="member-list">
+            <h3>📨 入会申请审核</h3>
+            <table id="applications-table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>单位/学校</th>
+                        <th>电话</th>
+                        <th>申请理由</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Modal Functions
+        function openModal(type) {
+            const modal = document.getElementById('modal-overlay');
+            const modalBody = document.getElementById('modal-body');
+            
+            // Clear current content
+            modalBody.innerHTML = '';
+            
+            if (type === 'members') {
+                // Clone content from template
+                const content = document.getElementById('template-members').innerHTML;
+                modalBody.innerHTML = content;
+                // Re-attach event listeners or re-render if needed
+                // Since we clear tbody on render, we need to trigger render again
+                loadAdminStats(); 
+            } else if (type === 'applications') {
+                const content = document.getElementById('template-applications').innerHTML;
+                modalBody.innerHTML = content;
+                loadApplications();
+            } else if (type === 'profile') {
+                const content = document.getElementById('template-profile').innerHTML;
+                modalBody.innerHTML = content;
+                renderProfileModal();
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeModal(event) {
+            // If event is provided, check if clicked outside content
+            if (event && event.target !== document.getElementById('modal-overlay')) {
+                return;
+            }
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function renderProfileModal() {
+            const p = window.currentProfile || {};
+            const s = window.currentSession || {};
+            const email = (s && s.user && s.user.email) || p.email || '-';
+            document.getElementById('modal-user-name').textContent = p.name || '未设置';
+            document.getElementById('modal-user-email').textContent = email;
+            document.getElementById('modal-user-role').textContent = p.role || 'member';
+            document.getElementById('modal-user-level').textContent = p.member_level || '普通会员';
+            document.getElementById('modal-user-position').textContent = p.position || '会员';
+        }
+        async function initDashboard() {
+            try {
+                const session = await checkSession();
+                const profile = await getUserRole();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('user-email').textContent = session.user.email;
+                if (profile) {
+                    window.currentSession = session;
+                    window.currentProfile = profile;
+                    document.getElementById('user-name').textContent = profile.name || '未设置';
+                    document.getElementById('user-role').textContent = profile.role || 'member';
+                    document.getElementById('user-level').textContent = profile.member_level || '普通会员';
+                    document.getElementById('user-position').textContent = profile.position || '会员';
+                    await loadNotifications();
+                    await subscribeToNotifications();
+                    startNotificationsPolling();
+                    if (profile.role === 'admin') {
+                        const h1 = document.querySelector('h1');
+                        h1.textContent += ' (管理员)';
+                        h1.style.color = '#d93025';
+                        document.getElementById('admin-section').style.display = 'block';
+                        loadAdminStats();
+                    } else {
+                        document.getElementById('application-section').style.display = 'block';
+                        checkApplicationStatus();
+                    }
+                } else {
+                    document.getElementById('user-name').textContent = 'Profile not found';
+                }
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('reset') === 'true') {
+                    alert('请立即设置您的新密码！');
+                    document.getElementById('new-password').focus();
+                }
+                if (urlParams.get('notice') === '1') {
+                    alert('您收到管理员邮件提醒，请登录并查看系统通知。');
+                }
+            } catch (e) {
+                document.getElementById('loading').textContent = '网络错误，无法加载数据：' + e.message;
+            }
+        }
+
+        async function handleChangePassword() {
+            const newPassword = document.getElementById('new-password').value;
+            if (!newPassword || newPassword.length < 6) {
+                alert('密码长度至少为 6 位');
+                return;
+            }
+            
+            try {
+                await updateUserPassword(newPassword);
+                alert('密码修改成功！');
+                document.getElementById('new-password').value = '';
+                
+                // Remove reset flag from URL if present
+                const url = new URL(window.location);
+                url.searchParams.delete('reset');
+                window.history.replaceState({}, '', url);
+                
+            } catch (error) {
+                alert('修改失败: ' + error.message);
+            }
+        }
+
+        async function loadAdminStats() {
+            try {
+                // Fetch all profiles (RLS policy allows admins to see all)
+                const { data: members, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*');
+                
+                if (error) throw error;
+
+                // Calculate statistics
+                const stats = {
+                    total: members.length,
+                    paid: members.filter(m => m.fee_paid).length,
+                    students: members.filter(m => m.is_student).length
+                };
+
+                // Update UI (Stats Cards)
+                const statTotal = document.getElementById('stat-total');
+                if (statTotal) {
+                    statTotal.textContent = stats.total;
+                    document.getElementById('stat-paid').textContent = stats.paid;
+                    document.getElementById('stat-student').textContent = stats.students;
+                }
+
+                // If modal is open and table exists, render table
+                // Note: document.getElementById searches the whole document, so it finds elements inside modal
+                const tbody = document.querySelector('#members-table tbody');
+                if (tbody) {
+                    renderMembersTable(members);
+                }
+
+            } catch (error) {
+                console.error("加载统计数据失败:", error);
+                // Optionally show error in UI
+            }
+        }
+
+        function renderMembersTable(members) {
+            const tbody = document.querySelector('#members-table tbody');
+            if (!tbody) return; // Guard if table is not in DOM
+            
+            tbody.innerHTML = ''; // Clear existing
+
+            members.forEach(member => {
+                const tr = document.createElement('tr');
+                
+                // Status Badge
+                const statusBadge = member.fee_paid 
+                    ? '<span class="badge badge-paid">已缴费</span>' 
+                    : '<span class="badge badge-unpaid">未缴费</span>';
+
+                // Action Button
+                let actionBtn = '';
+                if (!member.fee_paid) {
+                    actionBtn = `<button class="small" onclick="markAsPaid('${member.id}')">确认缴费</button>`;
+                } else {
+                    actionBtn = `<button class="small paid" disabled>已完成</button>`;
+                }
+                const inappBtn = `<button class="small" style="margin-left:8px" onclick="sendInAppReminder('${member.id}')">发送站内提醒</button>`;
+
+                // Position Select
+                const positions = ["会员", "理事", "常务理事", "秘书长", "副理事长", "理事长"];
+                let positionSelect = `<select onchange="updatePosition('${member.id}', this.value)" style="width: 100px;">`;
+                positions.forEach(pos => {
+                    const selected = (member.position || '会员') === pos ? 'selected' : '';
+                    positionSelect += `<option value="${pos}" ${selected}>${pos}</option>`;
+                });
+                positionSelect += `</select>`;
+
+                tr.innerHTML = `
+                    <td>${member.name || '-'}</td>
+                    <td>${member.email || '-'}</td>
+                    <td>${member.is_student ? '学生' : '普通会员'}</td>
+                    <td>${positionSelect}</td>
+                    <td>${statusBadge}</td>
+                    <td>${actionBtn}${inappBtn}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+
+        async function loadNotifications() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                const { data, error } = await supabaseClient
+                    .from('notifications')
+                    .select('*')
+                    .or(`user_id.eq.${user.id},user_id.is.null`)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                if (error) throw error;
+                renderNotifications(data || []);
+            } catch (e) {
+                const list = document.getElementById('notifications-list');
+                if (list) list.innerHTML = `<li style="color:#d93025;">加载通知失败：${e.message}</li>`;
+            }
+        }
+
+        function renderNotifications(items) {
+            const list = document.getElementById('notifications-list');
+            if (!list) return;
+            list.innerHTML = '';
+            if (!items || items.length === 0) {
+                list.innerHTML = '<li>暂无通知</li>';
+                return;
+            }
+            items.forEach(n => {
+                const li = document.createElement('li');
+                const title = n.title || '系统通知';
+                const time = new Date(n.created_at).toLocaleString();
+                li.textContent = `${title}：${n.message}（${time}）`;
+                list.appendChild(li);
+            });
+        }
+
+        async function subscribeToNotifications() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const channel = supabaseClient.channel('notifications');
+            channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
+                const n = payload.new;
+                if (n.user_id === user.id || n.user_id === null) {
+                    const list = document.getElementById('notifications-list');
+                    if (list) {
+                        const li = document.createElement('li');
+                        const title = n.title || '系统通知';
+                        const time = new Date(n.created_at).toLocaleString();
+                        li.textContent = `${title}：${n.message}（${time}）`;
+                        list.prepend(li);
+                    }
+                }
+            }).subscribe();
+        }
+
+        function startNotificationsPolling() {
+            // Fallback: Poll every 15s in case Realtime is not enabled
+            setInterval(() => {
+                loadNotifications();
+            }, 15000);
+        }
+
+        async function sendInAppReminder(memberId) {
+            showReminderPrompt(memberId, '管理员提醒', '请输入提醒内容');
+        }
+
+        async function sendBroadcastReminder() {
+            showReminderPrompt(null, '系统通知', '请输入群发提醒内容（所有会员可见）');
+        }
+
+        function showReminderPrompt(targetUserId, title, placeholder) {
+            const body = document.getElementById('modal-body');
+            if (!body) return;
+            const existing = document.getElementById('reminder-panel');
+            if (existing) existing.remove();
+            const panel = document.createElement('div');
+            panel.id = 'reminder-panel';
+            panel.style.margin = '10px 0 16px 0';
+            panel.style.padding = '12px';
+            panel.style.border = '1px solid #ddd';
+            panel.style.borderRadius = '6px';
+            panel.style.background = '#fff';
+            panel.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            panel.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                    <strong>${title}</strong>
+                    <div>
+                        <button class="small" id="reminder-send-btn">发送</button>
+                        <button class="small secondary" id="reminder-cancel-btn">取消</button>
+                    </div>
+                </div>
+                <textarea id="reminder-input" placeholder="${placeholder}" style="width:100%; height:80px;"></textarea>
+            `;
+            body.prepend(panel);
+            window._reminderTargetUserId = targetUserId;
+            document.getElementById('reminder-send-btn').onclick = submitReminderPrompt;
+            document.getElementById('reminder-cancel-btn').onclick = cancelReminderPrompt;
+        }
+
+        async function submitReminderPrompt() {
+            const contentEl = document.getElementById('reminder-input');
+            if (!contentEl) return;
+            const content = contentEl.value.trim();
+            if (!content) return;
+            try {
+                const target = window._reminderTargetUserId || null;
+                const title = target ? '管理员提醒' : '系统通知';
+                const { error } = await supabaseClient
+                    .from('notifications')
+                    .insert({ user_id: target, title, message: content });
+                if (error) throw error;
+                cancelReminderPrompt();
+                alert(target ? '站内提醒已发送' : '群发站内提醒已发送');
+            } catch (e) {
+                alert('发送失败: ' + e.message);
+            }
+        }
+
+        function cancelReminderPrompt() {
+            const panel = document.getElementById('reminder-panel');
+            if (panel) panel.remove();
+            window._reminderTargetUserId = null;
+        }
+        async function updatePosition(memberId, newPosition) {
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ position: newPosition })
+                    .eq('id', memberId);
+
+                if (error) throw error;
+                
+                // Show a small toast or just log it? Alert might be too annoying for every change.
+                // But let's confirm to the user.
+                console.log(`Updated position for ${memberId} to ${newPosition}`);
+                
+            } catch (error) {
+                console.error("更新职务失败:", error);
+                if (error.code === '42703') {
+                    alert('更新失败: 数据库缺少 position 字段。\n请联系管理员运行 add_position_column.sql 脚本。');
+                } else {
+                    alert('更新职务失败: ' + error.message);
+                }
+                // Reload to reset the select to original value
+                loadAdminStats();
+            }
+        }
+
+        async function markAsPaid(memberId) {
+            if (!confirm('确定要将该会员标记为“已缴费”吗？')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ fee_paid: true })
+                    .eq('id', memberId);
+
+                if (error) throw error;
+
+                alert('操作成功！');
+                // Reload stats and table
+                loadAdminStats();
+
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        async function exportMembersToExcel() {
+            if (!confirm('确定要导出所有会员资料吗？')) return;
+
+            try {
+                // Fetch all profiles
+                const { data: members, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                if (!members || members.length === 0) {
+                    alert('暂无会员数据可导出');
+                    return;
+                }
+
+                // Prepare data for Excel
+                // Map fields to Chinese headers
+                const excelData = members.map(m => ({
+                    "用户ID": m.id,
+                    "姓名": m.name || '-',
+                    "邮箱": m.email || '-', // Note: email might not be in profiles if not synced properly, but we have it in some cases
+                    "角色": m.role,
+                    "职务": m.position || '会员',
+                    "会员等级": m.member_level,
+                    "是否学生": m.is_student ? "是" : "否",
+                    "缴费状态": m.fee_paid ? "已缴费" : "未缴费",
+                    "注册时间": m.created_at ? new Date(m.created_at).toLocaleDateString() : '-'
+                }));
+
+                // Create worksheet
+                const ws = XLSX.utils.json_to_sheet(excelData);
+                
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "会员列表");
+
+                // Generate file name with date
+                const dateStr = new Date().toISOString().slice(0, 10);
+                const fileName = `会员列表_${dateStr}.xlsx`;
+
+                // Export
+                XLSX.writeFile(wb, fileName);
+                
+            } catch (error) {
+                console.error("Export failed:", error);
+                alert('导出失败: ' + error.message);
+            }
+        }
+
+        // --- Application Logic (User Side) ---
+
+        async function submitApplication() {
+            const name = document.getElementById('app-name').value;
+            const gender = document.getElementById('app-gender').value;
+            const unit = document.getElementById('app-unit').value;
+            const phone = document.getElementById('app-phone').value;
+            const reason = document.getElementById('app-reason').value;
+
+            if (!name || !unit || !phone) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                
+                const { error } = await supabaseClient
+                    .from('membership_applications')
+                    .insert({
+                        user_id: user.id,
+                        email: user.email,
+                        name,
+                        gender,
+                        unit,
+                        phone,
+                        reason
+                    });
+
+                if (error) throw error;
+
+                alert('申请已提交！');
+                checkApplicationStatus(); // Refresh status
+
+            } catch (error) {
+                alert('提交失败: ' + error.message);
+            }
+        }
+
+        async function checkApplicationStatus() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                const { data, error } = await supabaseClient
+                    .from('membership_applications')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (data) {
+                    // Hide form, show status
+                    document.getElementById('application-form').style.display = 'none';
+                    document.getElementById('application-status').style.display = 'block';
+                    
+                    const statusMap = {
+                        'pending': '审核中',
+                        'approved': '已通过',
+                        'rejected': '已拒绝'
+                    };
+                    document.getElementById('app-status-text').textContent = statusMap[data.status] || data.status;
+                }
+            } catch (error) {
+                console.error("Check status failed", error);
+            }
+        }
+
+        function sendEmailToAdmin() {
+            const subject = "入会申请提醒";
+            const body = "管理员您好，我已在系统中提交了入会申请，请查阅审核。\n\n我的邮箱: " + document.getElementById('user-email').textContent;
+            const mailtoLink = `mailto:3410923908@qq.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+        }
+
+        // --- Application Review Logic (Admin Side) ---
+
+        async function loadApplications() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('membership_applications')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const tbody = document.querySelector('#applications-table tbody');
+                if (!tbody) return; // Guard
+
+                tbody.innerHTML = '';
+
+                data.forEach(app => {
+                    const tr = document.createElement('tr');
+                    
+                    let actionHtml = '-';
+                    if (app.status === 'pending') {
+                        actionHtml = `
+                            <button class="small" onclick="reviewApplication('${app.id}', 'approved')">通过</button>
+                            <button class="small secondary" onclick="reviewApplication('${app.id}', 'rejected')">拒绝</button>
+                        `;
+                    }
+
+                    tr.innerHTML = `
+                        <td>${app.name}</td>
+                        <td>${app.unit}</td>
+                        <td>${app.phone}</td>
+                        <td>${app.reason}</td>
+                        <td>${app.status}</td>
+                        <td>${actionHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error("Load applications failed", error);
+            }
+        }
+
+        async function reviewApplication(appId, newStatus) {
+            if (!confirm(`确定要${newStatus === 'approved' ? '通过' : '拒绝'}该申请吗？`)) return;
+
+            try {
+                if (newStatus === 'approved') {
+                    // Use RPC function for atomic approval and profile update
+                    const { error } = await supabaseClient.rpc('approve_application', { app_id: appId });
+                    if (error) throw error;
+                } else {
+                    // Just update status for rejection
+                    const { error } = await supabaseClient
+                        .from('membership_applications')
+                        .update({ status: newStatus })
+                        .eq('id', appId);
+                    if (error) throw error;
+                }
+
+                alert('操作成功！');
+                loadApplications();
+                loadAdminStats(); // Refresh stats
+                
+                // If I am approving my own application (testing scenario), refresh my own profile
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                     // Fetch application to check if it was mine
+                    const { data: app } = await supabaseClient
+                        .from('membership_applications')
+                        .select('user_id')
+                        .eq('id', appId)
+                        .maybeSingle();
+                    
+                    if (app && app.user_id === user.id) {
+                         location.reload(); // Reload to show updated status
+                    }
+                }
+
+            } catch (error) {
+                console.error("Review failed:", error);
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // Initialize
+        initDashboard();
+    </script>
+</body>
+</html>
