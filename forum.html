@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学术论坛 - 广西自动化学会</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <style>
+        .forum-container {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 20px 40px;
+            box-sizing: border-box;
+        }
+
+        .forum-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .breadcrumb {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .breadcrumb a {
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        
+        .breadcrumb a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* Forum Grid */
+        .forum-sections {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1200px) {
+            .forum-sections {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .section-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .section-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Post List */
+        .post-list {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .post-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.1s;
+            cursor: pointer;
+        }
+
+        .post-item:last-child {
+            border-bottom: none;
+        }
+
+        .post-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .post-main {
+            flex: 1;
+        }
+
+        .post-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .post-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 15px;
+        }
+
+        .post-stats {
+            text-align: right;
+            min-width: 80px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Tags */
+        .tag-pinned {
+            background: #e0f2fe;
+            color: #0284c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .tag-essence {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Post Detail */
+        .post-detail-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+
+        .detail-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .author-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .post-content {
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text-main);
+            min-height: 150px;
+        }
+
+        /* Comments */
+        .comments-section {
+            margin-top: 30px;
+        }
+
+        .comment-item {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .comment-body {
+            color: var(--text-main);
+            font-size: 15px;
+        }
+
+        /* Editor */
+        .editor-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .rich-editor {
+            width: 100%;
+            min-height: 300px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 56px;
+            height: 56px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 100;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="forum-container">
+        <!-- Header -->
+        <div class="forum-header">
+            <h1 style="margin:0;">📚 学术论坛</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="small secondary" onclick="window.location.href='dashboard.html'">🔙 返回仪表盘</button>
+                <div id="user-info" style="display: flex; align-items: center; gap: 10px;">
+                    <!-- User info populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div id="breadcrumb" class="breadcrumb"></div>
+
+        <!-- Loading State -->
+        <div id="loading" style="text-align: center; padding: 40px; display: none;">
+            <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+            <div>加载中...</div>
+        </div>
+
+        <!-- Views -->
+        <div id="view-home" style="display: none;">
+            <div class="forum-sections" id="sections-grid">
+                <!-- Sections -->
+            </div>
+        </div>
+
+        <div id="view-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="current-section-title" style="margin:0;">版块名称</h2>
+                <div style="display: flex; gap: 10px;">
+                    <select id="sort-select" onchange="loadPosts()" style="width: auto; margin:0; padding: 6px 12px;">
+                        <option value="newest">最新发布</option>
+                        <option value="hottest">最多浏览</option>
+                    </select>
+                </div>
+            </div>
+            <div class="post-list" id="post-list">
+                <!-- Posts -->
+            </div>
+            <div class="fab" onclick="switchView('create')" title="发布新帖">+</div>
+        </div>
+
+        <div id="view-post" style="display: none;">
+            <div id="post-detail-container">
+                <!-- Post Detail -->
+            </div>
+            
+            <div class="comments-section">
+                <h3>评论回复</h3>
+                <div style="margin-bottom: 20px;">
+                    <textarea id="comment-input" rows="3" placeholder="写下你的看法..."></textarea>
+                    <button class="small" onclick="submitComment()" style="width: auto;">发表评论</button>
+                </div>
+                <div id="comments-list">
+                    <!-- Comments -->
+                </div>
+            </div>
+        </div>
+
+        <div id="view-create" style="display: none;">
+            <div class="editor-container">
+                <h2 style="margin-top: 0;">📝 发布新帖</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">标题</label>
+                    <input type="text" id="post-title-input" placeholder="请输入帖子标题" style="font-size: 16px;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">发布版块</label>
+                    <select id="section-select-input">
+                        <!-- Sections populated by JS -->
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">内容</label>
+                    <textarea id="post-content-input" class="rich-editor" placeholder="在此输入帖子内容... (支持 Markdown 语法)"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="secondary" onclick="goBack()" style="width: auto;">取消</button>
+                    <button onclick="submitPost()" style="width: auto;">🚀 发布</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            view: 'home',
+            section: null,
+            post: null,
+            user: null
+        };
+
+        // Initialize
+        async function init() {
+            try {
+                const session = await checkSession(); // from auth.js
+                if (!session) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Fetch full profile
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                    
+                state.user = profile || { id: session.user.id, name: session.user.email };
+                
+                // Apply theme if set
+                if (state.user.theme) {
+                    applyTheme(state.user.theme);
+                }
+
+                renderUserInfo();
+                loadSections();
+            } catch (err) {
+                console.error(err);
+                alert("加载失败，请重新登录");
+            }
+        }
+
+        function renderUserInfo() {
+            const container = document.getElementById('user-info');
+            container.innerHTML = `
+                <div class="author-avatar">${state.user.name ? state.user.name[0].toUpperCase() : 'U'}</div>
+                <span>${state.user.name || '会员'}</span>
+            `;
+        }
+
+        // --- Navigation & Routing ---
+
+        function switchView(viewName, data = null) {
+            // Hide all views
+            ['home', 'section', 'post', 'create'].forEach(v => {
+                document.getElementById(`view-${v}`).style.display = 'none';
+            });
+
+            state.view = viewName;
+            
+            // Render Breadcrumb
+            renderBreadcrumb();
+
+            // Show current view
+            document.getElementById(`view-${viewName}`).style.display = 'block';
+
+            if (viewName === 'home') {
+                loadSections();
+            } else if (viewName === 'section') {
+                state.section = data;
+                document.getElementById('current-section-title').textContent = data.name;
+                loadPosts();
+            } else if (viewName === 'post') {
+                state.post = data;
+                loadPostDetail();
+            } else if (viewName === 'create') {
+                loadSectionsForSelect();
+            }
+        }
+
+        function goBack() {
+            if (state.view === 'create') {
+                if(state.section) switchView('section', state.section);
+                else switchView('home');
+            } else if (state.view === 'post') {
+                switchView('section', state.section);
+            } else if (state.view === 'section') {
+                switchView('home');
+            }
+        }
+
+        function renderBreadcrumb() {
+            const b = document.getElementById('breadcrumb');
+            let html = `<a onclick="switchView('home')">首页</a>`;
+            
+            if (state.view !== 'home') {
+                html += ` <span>/</span> `;
+                if (state.view === 'create') {
+                     html += `<span>发布新帖</span>`;
+                } else if (state.section) {
+                    html += `<a onclick="switchView('section', state.section)">${state.section.name}</a>`;
+                    if (state.view === 'post' && state.post) {
+                        html += ` <span>/</span> <span>帖子详情</span>`;
+                    }
+                }
+            }
+            b.innerHTML = html;
+        }
+
+        // --- Data Loading & Rendering ---
+
+        async function loadSections() {
+            document.getElementById('loading').style.display = 'block';
+            const { data, error } = await supabaseClient
+                .from('forum_sections')
+                .select('*')
+                .order('id');
+            
+            document.getElementById('loading').style.display = 'none';
+            if (error) {
+                alert('加载版块失败');
+                return;
+            }
+
+            const grid = document.getElementById('sections-grid');
+            grid.innerHTML = data.map(section => `
+                <div class="section-card" onclick='handleSectionClick(${JSON.stringify(section)})'>
+                    <div class="section-title">${section.name}</div>
+                    <div class="section-desc">${section.description || '暂无描述'}</div>
+                </div>
+            `).join('');
+            
+            // Switch view if needed (though usually called within switchView)
+            document.getElementById('view-home').style.display = 'block';
+        }
+
+        function handleSectionClick(section) {
+            switchView('section', section);
+        }
+
+        async function loadPosts() {
+            if (!state.section) return;
+            document.getElementById('loading').style.display = 'block';
+            
+            const sort = document.getElementById('sort-select').value;
+            let query = supabaseClient
+                .from('posts')
+                .select(`
+                    *,
+                    author:profiles(name)
+                `)
+                .eq('section_id', state.section.id)
+                .order('is_pinned', { ascending: false });
+
+            if (sort === 'hottest') {
+                query = query.order('view_count', { ascending: false });
+            } else {
+                query = query.order('created_at', { ascending: false });
+            }
+
+            const { data, error } = await query;
+            document.getElementById('loading').style.display = 'none';
+
+            if (error) {
+                console.error('Error loading posts:', error);
+                alert('加载帖子列表失败: ' + error.message);
+                return;
+            }
+
+            const list = document.getElementById('post-list');
+            if (data.length === 0) {
+                list.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);">暂无帖子，来抢沙发吧！</div>';
+                return;
+            }
+
+            list.innerHTML = data.map(post => `
+                <div class="post-item" onclick='handlePostClick(${JSON.stringify(post)})'>
+                    <div class="post-main">
+                        <div class="post-title">
+                            ${post.is_pinned ? '<span class="tag-pinned">置顶</span>' : ''}
+                            ${post.is_essence ? '<span class="tag-essence">精华</span>' : ''}
+                            ${post.title}
+                        </div>
+                        <div class="post-meta">
+                            <span>👤 ${post.author?.name || '匿名'}</span>
+                            <span>🕒 ${new Date(post.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="post-stats">
+                        👁️ ${post.view_count || 0}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handlePostClick(post) {
+            switchView('post', post);
+        }
+
+        async function loadPostDetail() {
+            if (!state.post) return;
+            document.getElementById('loading').style.display = 'block';
+
+            // Increment View Count (Fire and forget)
+            supabaseClient.rpc('increment_view_count', { post_id: state.post.id }).then(({ error }) => {
+                if (error) {
+                    // Fallback if RPC doesn't exist: manual update
+                    supabaseClient.from('posts')
+                        .update({ view_count: (state.post.view_count || 0) + 1 })
+                        .eq('id', state.post.id)
+                        .then();
+                }
+            });
+
+            // Render Post
+            const container = document.getElementById('post-detail-container');
+            container.innerHTML = `
+                <div class="post-detail-card">
+                    <div class="detail-title">${state.post.title}</div>
+                    <div class="detail-meta">
+                        <div class="author-avatar">${state.post.author?.name ? state.post.author.name[0] : '?'}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:600;">${state.post.author?.name || '匿名'}</div>
+                            <div style="font-size:12px;">发布于 ${new Date(state.post.created_at).toLocaleString()}</div>
+                        </div>
+                        <div>浏览 ${state.post.view_count || 0}</div>
+                    </div>
+                    <div class="post-content">
+                        ${state.post.content.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+
+            // Load Comments
+            loadComments();
+            
+            // Realtime Subscription for new comments
+            subscribeToComments();
+        }
+
+        let commentSubscription = null;
+        function subscribeToComments() {
+            if (commentSubscription) supabaseClient.removeChannel(commentSubscription);
+            
+            commentSubscription = supabaseClient
+                .channel('public:comments')
+                .on('postgres_changes', 
+                    { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'comments', 
+                        filter: `post_id=eq.${state.post.id}` 
+                    }, 
+                    (payload) => {
+                        // Reload comments to get author info properly
+                        loadComments(); 
+                    }
+                )
+                .subscribe();
+        }
+
+        async function loadComments() {
+            const { data, error } = await supabaseClient
+                .from('comments')
+                .select(`
+                    *,
+                    author:profiles(name)
+                `)
+                .eq('post_id', state.post.id)
+                .order('created_at', { ascending: true });
+
+            document.getElementById('loading').style.display = 'none';
+            if (error) return;
+
+            const list = document.getElementById('comments-list');
+            if (data.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:20px;">暂无评论</div>';
+                return;
+            }
+
+            list.innerHTML = data.map((comment, index) => `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span style="font-weight:600; color:var(--primary-color);">${comment.author?.name || '匿名'}</span>
+                        <span>#${index + 1} · ${new Date(comment.created_at).toLocaleString()}</span>
+                    </div>
+                    <div class="comment-body">
+                        ${comment.content.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- Actions ---
+
+        async function submitComment() {
+            const input = document.getElementById('comment-input');
+            const content = input.value.trim();
+            if (!content) return;
+
+            const { error } = await supabaseClient
+                .from('comments')
+                .insert({
+                    post_id: state.post.id,
+                    author_id: state.user.id,
+                    content: content
+                });
+
+            if (error) {
+                alert('评论失败: ' + error.message);
+            } else {
+                input.value = '';
+                // List will update via Realtime or we can manually reload
+                loadComments();
+            }
+        }
+
+        async function loadSectionsForSelect() {
+            const { data } = await supabaseClient.from('forum_sections').select('*');
+            const select = document.getElementById('section-select-input');
+            select.innerHTML = data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            if (state.section) {
+                select.value = state.section.id;
+            }
+        }
+
+        async function submitPost() {
+            const title = document.getElementById('post-title-input').value.trim();
+            const content = document.getElementById('post-content-input').value.trim();
+            const sectionId = document.getElementById('section-select-input').value;
+
+            if (!title || !content) {
+                alert('标题和内容不能为空');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('posts')
+                .insert({
+                    title,
+                    content,
+                    section_id: sectionId,
+                    author_id: state.user.id
+                });
+
+            if (error) {
+                alert('发布失败: ' + error.message);
+            } else {
+                alert('发布成功！');
+                // Go back to the section
+                const { data: section } = await supabaseClient.from('forum_sections').select('*').eq('id', sectionId).single();
+                switchView('section', section);
+            }
+        }
+
+        function applyTheme(theme) {
+            // Re-use logic from dashboard or just simple property set
+            if (!theme) return;
+            const THEMES = {
+                light: {
+                    "--primary-color": "#10b981",
+                    "--bg-color": "#f1f5f9",
+                    "--card-bg": "#ffffff",
+                    "--text-main": "#1e293b",
+                    "--text-muted": "#64748b",
+                    "--border-color": "#e2e8f0",
+                    "--input-bg": "#f8fafc",
+                    "--bg-secondary": "#f8fafc",
+                    "--hover-bg": "#f1f5f9"
+                },
+                dark: {
+                    "--primary-color": "#22c55e",
+                    "--bg-color": "#020617",
+                    "--card-bg": "#0f172a",
+                    "--text-main": "#e2e8f0",
+                    "--text-muted": "#94a3b8",
+                    "--border-color": "#1e293b",
+                    "--input-bg": "#1e293b",
+                    "--bg-secondary": "#1e293b",
+                    "--hover-bg": "#334155"
+                },
+                gxas: {
+                    "--primary-color": "#059669",
+                    "--bg-color": "#ecfdf5",
+                    "--card-bg": "#ffffff",
+                    "--text-main": "#064e3b",
+                    "--text-muted": "#047857",
+                    "--border-color": "#a7f3d0",
+                    "--input-bg": "#f0fdf4",
+                    "--bg-secondary": "#d1fae5",
+                    "--hover-bg": "#d1fae5"
+                }
+            };
+            
+            const mode = theme.mode || 'light';
+            const preset = THEMES[mode];
+            if(preset) {
+                Object.entries(preset).forEach(([key, value]) => {
+                    document.documentElement.style.setProperty(key, value);
+                });
+            }
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

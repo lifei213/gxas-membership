@@ -1,0 +1,28 @@
+{
+  "name": "gxas-membership-system",
+  "version": "1.0.0",
+  "description": "广西自动化学会会员管理系统",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "author": "GXAS",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "electron-packager": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.gxas.membership",
+    "productName": "广西自动化学会管理系统",
+    "win": {
+      "target": "nsis"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}
