@@ -18,14 +18,27 @@ async function login(email, password) {
     window.location.href = "dashboard.html";
 }
 
+// Helper to get base URL for redirects (handles subdirectories like GitHub Pages)
+function getBaseUrl() {
+    const path = window.location.pathname;
+    const pathSegments = path.split('/');
+    // Remove the last segment if it is a file name (contains dot)
+    if (pathSegments[pathSegments.length - 1].includes('.')) {
+        pathSegments.pop();
+    }
+    const basePath = pathSegments.join('/');
+    return window.location.origin + basePath;
+}
+
 // Register Function
 async function register(email, password) {
+    const baseUrl = getBaseUrl();
     const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
             // Redirect to this page after email verification
-            emailRedirectTo: window.location.origin + '/index.html' 
+            emailRedirectTo: `${baseUrl}/index.html` 
         }
     });
     
@@ -46,8 +59,9 @@ async function register(email, password) {
 
 // Send Password Reset Email
 async function sendPasswordResetEmail(email) {
+    const baseUrl = getBaseUrl();
     const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/dashboard.html?reset=true',
+        redirectTo: `${baseUrl}/dashboard.html?reset=true`,
     });
     
     if (error) throw error;
