@@ -516,6 +516,23 @@
             if (!container) return;
             container.style.display = 'block';
 
+            // Safety check: Ensure utils/personaGenerator.js is loaded
+            if (typeof PersonaGenerator === 'undefined') {
+                console.error("PersonaGenerator script not loaded!");
+                const introEl = document.getElementById('persona-intro');
+                if (introEl) {
+                    introEl.innerHTML = `
+                        <div style="color: #ef4444; padding: 10px;">
+                            <strong>组件加载失败</strong><br>
+                            <span style="font-size: 0.9em;">系统无法加载 'utils/personaGenerator.js'。</span><br>
+                            <span style="font-size: 0.8em; color: var(--text-muted);">原因可能是：utils 文件夹未正确上传至 GitHub 或网络连接问题。</span>
+                        </div>
+                    `;
+                }
+                document.getElementById('persona-analysis-text').textContent = "无法生成分析数据。";
+                return;
+            }
+
             try {
                 // 1. Fetch activities (Real-time data)
                 const { data: activities } = await supabaseClient
@@ -579,13 +596,17 @@
             } catch (error) {
                 console.error("Persona System Error:", error);
                 // Fallback rendering
-                 const tags = PersonaGenerator.generateTags(profile, []);
-                 const intro = PersonaGenerator.generateAIIntro(profile, tags);
-                 const stats = PersonaGenerator.generateStats(profile);
-                 const analysis = "暂时无法获取您的学术活动数据，请稍后重试。";
-                 
-                 window.lastPersonaData = { tags, intro, stats, analysis };
-                 renderPersonaUI(tags, intro, stats, analysis);
+                if (typeof PersonaGenerator !== 'undefined') {
+                    const tags = PersonaGenerator.generateTags(profile, []);
+                    const intro = PersonaGenerator.generateAIIntro(profile, tags);
+                    const stats = PersonaGenerator.generateStats(profile);
+                    const analysis = "暂时无法获取您的学术活动数据，请稍后重试。";
+                    
+                    window.lastPersonaData = { tags, intro, stats, analysis };
+                    renderPersonaUI(tags, intro, stats, analysis);
+                } else {
+                     document.getElementById('persona-intro').textContent = "组件加载异常，请刷新重试。";
+                }
             }
         }
 
