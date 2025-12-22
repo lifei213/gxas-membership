@@ -9,16 +9,21 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
-        <h1 id="form-title">会员登录</h1>
-        <p>广西自动化学会会员管理系统</p>
-        
+    <div class="container login-card">
+        <div class="login-brand"> 
+            <div class="brand-logo">GX</div> 
+            <div class="brand-text"> 
+                <div class="brand-name">广西自动化学会</div> 
+                <div class="brand-sub">GUANGXI ASSOCIATION OF AUTOMATION</div> 
+            </div> 
+        </div>
+
         <input type="email" id="email" placeholder="邮箱地址" required>
         <input type="password" id="password" placeholder="密码" required>
         
         <!-- Login Mode Buttons -->
         <div id="login-buttons">
-            <button onclick="handleLogin()">登录</button>
+            <button onclick="handleLogin()" class="login-button">登录</button>
             <p style="margin-top: 15px; font-size: 14px;">
                 <a href="#" onclick="toggleMode('reset')">忘记密码？</a> | 
                 还没有账号？ <a href="#" onclick="toggleMode('register')">立即注册</a>
@@ -27,7 +32,7 @@
 
         <!-- Register Mode Buttons (Hidden by default) -->
         <div id="register-buttons" style="display: none;">
-            <button onclick="handleRegister()">注册新账号</button>
+            <button onclick="handleRegister()" class="login-button">注册新账号</button>
             <p style="margin-top: 15px; font-size: 14px;">
                 已有账号？ <a href="#" onclick="toggleMode('login')">返回登录</a>
             </p>
@@ -35,7 +40,7 @@
 
         <!-- Reset Password Mode Buttons (Hidden by default) -->
         <div id="reset-buttons" style="display: none;">
-            <button onclick="handleResetPassword()">发送重置邮件</button>
+            <button onclick="handleResetPassword()" class="login-button">发送重置邮件</button>
             <p style="margin-top: 15px; font-size: 14px;">
                 <a href="#" onclick="toggleMode('login')">返回登录</a>
             </p>
@@ -63,7 +68,6 @@
         checkLoginStatus();
 
         function toggleMode(mode) {
-            const title = document.getElementById('form-title');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
             const loginBtns = document.getElementById('login-buttons');
@@ -80,18 +84,15 @@
             passwordInput.style.display = 'block';
 
             if (mode === 'register') {
-                title.textContent = '注册会员';
                 loginBtns.style.display = 'none';
                 regBtns.style.display = 'block';
                 resetBtns.style.display = 'none';
             } else if (mode === 'reset') {
-                title.textContent = '重置密码';
                 passwordInput.style.display = 'none'; // Hide password for reset request
                 loginBtns.style.display = 'none';
                 regBtns.style.display = 'none';
                 resetBtns.style.display = 'block';
             } else {
-                title.textContent = '会员登录';
                 loginBtns.style.display = 'block';
                 regBtns.style.display = 'none';
                 resetBtns.style.display = 'none';

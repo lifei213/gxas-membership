@@ -31,7 +31,7 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-color);
+    background: var(--bg-gradient);
     color: var(--text-main);
     display: flex;
     justify-content: center;
@@ -44,11 +44,11 @@ body {
 /* Auth Container (Login/Register) */
 .container {
     background: var(--card-bg);
-    padding: 2.5rem;
-    border-radius: 12px;
+    padding: 3.5rem;
+    border-radius: 24px;
     box-shadow: var(--shadow-lg);
     width: 100%;
-    max-width: 400px;
+    max-width: 520px;
     text-align: center;
     transition: transform var(--transition-fast);
 }
@@ -69,13 +69,13 @@ h3 {
 /* Form Elements */
 input, select, textarea {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     margin: 8px 0;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-sizing: border-box;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 15px;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     background-color: var(--input-bg);
     color: var(--text-main);
@@ -84,7 +84,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
     background-color: var(--card-bg);
 }
 
@@ -167,19 +167,30 @@ a:hover {
 /* AI Persona Card */
 .persona-card {
     background: var(--card-bg);
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 24px;
     box-shadow: var(--shadow-md);
     margin-top: 24px;
     border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.persona-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+    pointer-events: none;
 }
 
 .persona-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: var(--shadow-xl);
 }
 
 .persona-header {
@@ -218,7 +229,7 @@ a:hover {
 }
 
 .persona-intro {
-    background: #f8fafc;
+    background: var(--bg-secondary);
     padding: 12px 16px;
     border-radius: 8px;
     font-size: 14px;
@@ -391,7 +402,7 @@ th, td {
 }
 
 th {
-    background-color: #f8fafc;
+    background-color: var(--bg-secondary);
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -406,7 +417,7 @@ tr:last-child td {
 }
 
 tr:hover td {
-    background-color: #f8fafc;
+    background-color: var(--hover-bg);
 }
 
 /* Badges */
@@ -839,106 +850,6 @@ tr:hover td {
     color: var(--text-muted);
 }
 
-/* Persona Card Styles */
-.persona-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    margin-bottom: 24px;
-    transition: all 0.3s ease;
-}
-
-.persona-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.persona-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.persona-avatar {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 24px;
-    font-weight: 700;
-    box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3);
-}
-
-.persona-title h3 {
-    margin: 0;
-    font-size: 18px;
-    color: var(--text-main);
-}
-
-.persona-id {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: monospace;
-}
-
-.persona-section {
-    margin-bottom: 20px;
-}
-
-.persona-section h4 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 0 12px;
-    font-size: 14px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.persona-intro {
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text-main);
-    background: var(--bg-secondary);
-    padding: 12px;
-    border-radius: 8px;
-    border-left: 3px solid var(--primary-color);
-}
-
-.persona-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.persona-tag {
-    background: var(--tag-bg);
-    color: var(--tag-color);
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    transition: all 0.2s;
-}
-
-.persona-tag:hover {
-    background: var(--primary-color);
-    color: white;
-    transform: scale(1.05);
-}
-
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -953,11 +864,7 @@ tr:hover td {
     padding-left: 20px;
     padding-right: 20px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(
-        to right,
-        rgba(16,185,129,0.05),
-        transparent
-    );
+    background: var(--header-bg);
     border-radius: 8px;
 }
 
@@ -1000,12 +907,74 @@ tr:hover td {
     background: #94a3b8;
 }
 
-/* Loading State */
-#loading {
-    font-size: 1.2rem;
-    color: var(--text-muted);
+/* Login Page New Styles */
+.login-brand {
     display: flex;
-    justify-content: center;
     align-items: center;
-    height: 50vh;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.brand-text {
+    text-align: left;
+}
+
+.brand-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--logo-gradient);
+    color: #fff;
+    font-weight: 700;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.brand-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.brand-sub {
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+
+
+.login-button {
+    height: 52px;
+    border-radius: 16px;
+    background: var(--btn-gradient);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 1px;
+}
+
+.login-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(16, 185, 129, 0.35);
+}
+
+.login-card {
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

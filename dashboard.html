@@ -13,7 +13,7 @@
     <!-- ECharts for Data Visualization -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <!-- QRCode.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="utils/qrcode.min.js"></script>
     <script src="utils/personaGenerator.js"></script>
     <style>
         /* Fix for chat message layout misalignment */
@@ -158,11 +158,11 @@
             flex-direction: column;
             align-items: flex-start;
             padding: 24px;
-            border-radius: 16px;
+            border-radius: 20px;
             color: white;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: var(--shadow-md);
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -170,8 +170,9 @@
         }
 
         .admin-card-btn:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: var(--shadow-xl);
+            z-index: 10;
         }
 
         .admin-card-btn .btn-icon {
@@ -701,16 +702,40 @@
             const qrContainer = document.getElementById('qrcode-container');
             if (qrContainer) {
                 qrContainer.innerHTML = ''; // Clear previous
-                setTimeout(() => {
-                    new QRCode(qrContainer, {
-                        text: cardUrl,
-                        width: 180,
-                        height: 180,
-                        colorDark : "#000000",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                    });
-                }, 50);
+                
+                // Check if running in local file mode (Electron default)
+                if (window.location.protocol === 'file:') {
+                    qrContainer.innerHTML = `
+                        <div style="text-align:center; padding: 15px; background: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
+                            <div style="font-size: 40px; margin-bottom: 10px;">💻</div>
+                            <p style="margin: 0; font-size: 13px; color: var(--text-muted);">本地软件模式不支持手机扫码</p>
+                            <button onclick="openARPreview('${cardUrl.replace(/'/g, "\\'")}')" class="small" style="margin-top: 10px; background: var(--primary-color); color: white; border: none;">
+                                在电脑上预览 AR 卡片
+                            </button>
+                        </div>
+                    `;
+                    // Hide the small link since we have a big button now
+                    const smallLink = document.getElementById('ar-card-link');
+                    if(smallLink) smallLink.style.display = 'none';
+                } else {
+                    // We are likely on a web server (e.g. localhost preview or deployed)
+                    // Try to replace localhost with IP if possible, but JS client-side can't easily get IP without WebRTC hack.
+                    // For now, just generate the QR code as is.
+                    setTimeout(() => {
+                        new QRCode(qrContainer, {
+                            text: cardUrl,
+                            width: 180,
+                            height: 180,
+                            colorDark : "#000000",
+                            colorLight : "#ffffff",
+                            correctLevel : QRCode.CorrectLevel.H
+                        });
+                    }, 50);
+                    
+                    // Ensure small link is visible
+                    const smallLink = document.getElementById('ar-card-link');
+                    if(smallLink) smallLink.style.display = 'inline';
+                }
             }
         }
 
@@ -961,6 +986,8 @@
             light: {
                 "--primary-color": "#10b981",
                 "--bg-color": "#f1f5f9",
+                "--bg-gradient": "linear-gradient(135deg, #f0fdf4, #f8fafc)",
+                "--header-bg": "linear-gradient(to right, rgba(16,185,129,0.05), transparent)",
                 "--card-bg": "#ffffff",
                 "--text-main": "#1e293b",
                 "--text-muted": "#64748b",
@@ -972,11 +999,15 @@
                 "--tag-color": "#10b981",
                 "--chat-ai-bg": "#ffffff",
                 "--scrollbar-thumb": "#cbd5e1",
-                "--scrollbar-track": "#f1f5f9"
+                "--scrollbar-track": "#f1f5f9",
+                "--logo-gradient": "linear-gradient(135deg, #10b981, #059669)",
+                "--btn-gradient": "linear-gradient(135deg, #10b981, #059669)"
             },
             dark: {
                 "--primary-color": "#22c55e",
                 "--bg-color": "#020617",
+                "--bg-gradient": "linear-gradient(135deg, #020617, #0f172a)",
+                "--header-bg": "linear-gradient(to right, rgba(34,197,94,0.1), transparent)",
                 "--card-bg": "#0f172a",
                 "--text-main": "#e2e8f0",
                 "--text-muted": "#94a3b8",
@@ -988,11 +1019,15 @@
                 "--tag-color": "#22c55e",
                 "--chat-ai-bg": "#1e293b",
                 "--scrollbar-thumb": "#475569",
-                "--scrollbar-track": "#0f172a"
+                "--scrollbar-track": "#0f172a",
+                "--logo-gradient": "linear-gradient(135deg, #22c55e, #15803d)",
+                "--btn-gradient": "linear-gradient(135deg, #22c55e, #16a34a)"
             },
             gxas: { // 自动化学会风格
                 "--primary-color": "#059669",
                 "--bg-color": "#ecfdf5",
+                "--bg-gradient": "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+                "--header-bg": "linear-gradient(to right, rgba(5,150,105,0.1), transparent)",
                 "--card-bg": "#ffffff",
                 "--text-main": "#064e3b",
                 "--text-muted": "#047857",
@@ -1004,7 +1039,9 @@
                 "--tag-color": "#059669",
                 "--chat-ai-bg": "#ffffff",
                 "--scrollbar-thumb": "#6ee7b7",
-                "--scrollbar-track": "#ecfdf5"
+                "--scrollbar-track": "#ecfdf5",
+                "--logo-gradient": "linear-gradient(135deg, #059669, #047857)",
+                "--btn-gradient": "linear-gradient(135deg, #059669, #047857)"
             }
         };
 
@@ -1108,9 +1145,7 @@
             }
         }
 
-        async function saveTheme(mode) {
-            // ... (keep existing code, just context)
-        }
+
 
         // --- Message System Logic ---
 
@@ -1456,6 +1491,7 @@
         async function loadNotifications() {
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
                 const { data, error } = await supabaseClient
                     .from('notifications')
                     .select('*')
@@ -1711,6 +1747,8 @@
         async function checkApplicationStatus() {
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
+
                 const { data, error } = await supabaseClient
                     .from('membership_applications')
                     .select('*')
