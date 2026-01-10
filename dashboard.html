@@ -15,6 +15,13 @@
     <!-- QRCode.js -->
     <script src="utils/qrcode.min.js"></script>
     <script src="utils/personaGenerator.js"></script>
+    <!-- File Parsing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         /* Fix for chat message layout misalignment */
         .chat-messages {
@@ -577,6 +584,7 @@
     <script>
         // Global Chat History
         window.chatHistory = [];
+        window.lastUploadedFileContent = null;
 
         // Modal Functions
         function openModal(type) {
@@ -702,40 +710,16 @@
             const qrContainer = document.getElementById('qrcode-container');
             if (qrContainer) {
                 qrContainer.innerHTML = ''; // Clear previous
-                
-                // Check if running in local file mode (Electron default)
-                if (window.location.protocol === 'file:') {
-                    qrContainer.innerHTML = `
-                        <div style="text-align:center; padding: 15px; background: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
-                            <div style="font-size: 40px; margin-bottom: 10px;">💻</div>
-                            <p style="margin: 0; font-size: 13px; color: var(--text-muted);">本地软件模式不支持手机扫码</p>
-                            <button onclick="openARPreview('${cardUrl.replace(/'/g, "\\'")}')" class="small" style="margin-top: 10px; background: var(--primary-color); color: white; border: none;">
-                                在电脑上预览 AR 卡片
-                            </button>
-                        </div>
-                    `;
-                    // Hide the small link since we have a big button now
-                    const smallLink = document.getElementById('ar-card-link');
-                    if(smallLink) smallLink.style.display = 'none';
-                } else {
-                    // We are likely on a web server (e.g. localhost preview or deployed)
-                    // Try to replace localhost with IP if possible, but JS client-side can't easily get IP without WebRTC hack.
-                    // For now, just generate the QR code as is.
-                    setTimeout(() => {
-                        new QRCode(qrContainer, {
-                            text: cardUrl,
-                            width: 180,
-                            height: 180,
-                            colorDark : "#000000",
-                            colorLight : "#ffffff",
-                            correctLevel : QRCode.CorrectLevel.H
-                        });
-                    }, 50);
-                    
-                    // Ensure small link is visible
-                    const smallLink = document.getElementById('ar-card-link');
-                    if(smallLink) smallLink.style.display = 'inline';
-                }
+                setTimeout(() => {
+                    new QRCode(qrContainer, {
+                        text: cardUrl,
+                        width: 180,
+                        height: 180,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                }, 50);
             }
         }
 
@@ -1625,7 +1609,7 @@
             } catch (error) {
                 console.error("更新职务失败:", error);
                 if (error.code === '42703') {
-                    alert('更新失败: 数据库缺少 position 字段。\n请联系管理员运行 add_position_column.sql 脚本。');
+                    alert('更新失败: 数据库缺少 position 字段。\n请联系管理员运行 setup.sql 脚本。');
                 } else {
                     alert('更新职务失败: ' + error.message);
                 }
@@ -2002,6 +1986,55 @@
             }
         }
 
+        async function extractFileContent(file, progressCallback) {
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            
+            try {
+                if (['txt', 'md', 'csv', 'json', 'js', 'html', 'css', 'sql'].includes(fileExt)) {
+                    return await file.text();
+                } 
+                else if (fileExt === 'pdf') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                    let fullText = '';
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += `[Page ${i}]\n${pageText}\n\n`;
+                    }
+                    return fullText;
+                }
+                else if (['doc', 'docx'].includes(fileExt)) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+                    return result.value;
+                }
+                else if (['jpg', 'jpeg', 'png', 'bmp', 'webp'].includes(fileExt)) {
+                    if (progressCallback) progressCallback('正在识别图片文字 (加载引擎中...)...');
+                    
+                    const result = await Tesseract.recognize(
+                        file,
+                        'chi_sim+eng', // Chinese Simplified + English
+                        {
+                            logger: m => {
+                                if (m.status === 'recognizing text' && progressCallback) {
+                                    progressCallback(`正在识别图片文字... ${Math.round(m.progress * 100)}%`);
+                                }
+                            }
+                        }
+                    );
+                    return `[图片OCR识别结果]\n${result.data.text}`;
+                }
+                
+                return null; // Unsupported format for text extraction
+            } catch (error) {
+                console.error("File extraction error:", error);
+                return `(Error extracting file content: ${error.message})`;
+            }
+        }
+
         async function handleChatFileUpload(input) {
             const file = input.files[0];
             if (!file) return;
@@ -2022,8 +2055,15 @@
             try {
                 // 2. Upload to Supabase Storage
                 const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
                 const userId = window.currentProfile ? window.currentProfile.id : 'guest';
+                
+                if (userId === 'guest') {
+                    loadingDiv.textContent = '发送失败: 请先登录后再上传文件';
+                    loadingDiv.style.backgroundColor = 'var(--error-color)';
+                    return;
+                }
+
+                const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
                 const filePath = `chat-uploads/${userId}/${fileName}`;
 
                 const { data, error } = await supabaseClient
@@ -2067,11 +2107,37 @@
                 // Add AI typing indicator
                 const typingId = addTypingIndicator();
                 
+                // Extract file content
+                let extractedContent = '';
+                // Note: We process images now too for OCR
+                loadingDiv.innerHTML += `<div><small id="${loadingId}-status">(正在分析文件内容...)</small></div>`;
+                
+                const statusSpan = document.getElementById(`${loadingId}-status`);
+                const updateStatus = (msg) => { if(statusSpan) statusSpan.textContent = `(${msg})`; };
+
+                extractedContent = await extractFileContent(file, updateStatus);
+                
+                // Update UI to remove "analyzing" text or show "analyzed"
+                if (statusSpan) statusSpan.remove();
+
                 // Send context to AI
                 try {
-                    const systemPrompt = `用户上传了一个文件。文件名: ${file.name}。链接: ${publicUrl}。
-如果用户询问关于这个文件的问题，请告知用户你已经收到了文件链接，但作为AI你可能无法直接读取文件内容（除非是图片且你有视觉能力，或者文件内容已提取）。
-请礼貌地确认收到文件。`;
+                    let systemPrompt = `用户上传了一个文件。文件名: ${file.name}。链接: ${publicUrl}。`;
+                    
+                    if (extractedContent) {
+                        // Truncate if too long (approx 20k chars to be safe with token limits)
+                        const maxLength = 20000;
+                        if (extractedContent.length > maxLength) {
+                            extractedContent = extractedContent.substring(0, maxLength) + "\n...(内容过长已截断)...";
+                        }
+                        
+                        // Save to global context for follow-up questions
+                        window.lastUploadedFileContent = extractedContent;
+
+                        systemPrompt += `\n\n文件内容如下:\n\`\`\`\n${extractedContent}\n\`\`\`\n\n请基于上述文件内容回答用户的问题。如果内容是乱码或无法理解，请告知用户。`;
+                    } else {
+                        systemPrompt += `\n未能提取到文件文本内容（可能是二进制文件或不支持的格式）。请告知用户你收到了文件，但无法读取内容。`;
+                    }
 
                     const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
                         method: 'POST',
@@ -2142,7 +2208,7 @@
             const role = profile.role === 'admin' ? '管理员' : (profile.role ? '普通会员' : '访客');
             const name = profile.name || '用户';
             
-            const systemPrompt = `你是一个简易会员管理系统的智能助手。
+            let systemPrompt = `你是一个简易会员管理系统的智能助手。
 当前系统信息：
 - 系统名称：会员管理系统
 - 核心功能：会员档案管理、缴费状态追踪、入会申请审核。
@@ -2154,7 +2220,14 @@
 3. **如何成为管理员**：目前系统不支持前台申请管理员，需由技术人员在数据库直接指定。
 4. **技术栈**：本系统基于 Supabase (后端/数据库) + 原生 HTML/JS 构建。
 
-请基于以上信息回答用户问题。如果用户询问本系统无关的问题，请礼貌地将话题引回系统功能。回答要简短、专业。`;
+请基于以上信息回答用户问题。`;
+
+            // Inject File Context if available
+            if (window.lastUploadedFileContent) {
+                systemPrompt += `\n\n【重要上下文】用户之前上传了文件，内容如下：\n\`\`\`\n${window.lastUploadedFileContent}\n\`\`\`\n如果用户的问题是关于此文件的（如“简述文件”、“分析数据”等），请忽略所有“仅限会员系统话题”的限制，优先详细解答文件相关问题。`;
+            } else {
+                systemPrompt += `\n如果用户询问本系统无关的问题，请礼貌地将话题引回系统功能。回答要简短、专业。`;
+            }
 
             try {
                 const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
